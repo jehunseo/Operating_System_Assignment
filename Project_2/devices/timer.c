@@ -84,16 +84,59 @@ timer_elapsed (int64_t then)
   return timer_ticks () - then;
 }
 
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+//for assignment 1
+void
+add_sleep_list(int64_t start)
+{
+  struct thread *t = thread_current();
+  t->awake = start;
+  if(list_empty(&sleep_list))
+  {
+    list_push_front(&sleep_list, &t->elem);
+    return;
+  }
+
+  struct list_elem *tmp;
+  for(tmp = list_begin(&sleep_list);
+	tmp != list_end(&sleep_list);
+	tmp = list_next(tmp))
+    {
+      if(start < list_entry(tmp, struct thread, elem)->awake)
+      {
+        list_insert(tmp, &t->elem);
+        return;
+      }
+    }
+}
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
 /* Sleeps for approximately TICKS timer ticks.  Interrupts must
    be turned on. */
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
-
+  int64_t start = timer_ticks () + ticks;  // set ref.time
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+//for assignment 1
+
+//  while (timer_elapsed (start) < ticks) 
+//    thread_yield ();
+//avoid busy_wait
+
+
+  enum intr_level old_level = intr_disable();
+  add_sleep_list(start);
+  thread_block();
+  intr_set_level(old_level);
+  //instead of yielding thread, move thread to sleep list
+  //when awake time comes, alarm process
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -172,6 +215,25 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+// for assignment 1
+
+  while(!list_empty(&sleep_list))
+  {
+    struct thread *t_ = list_entry(list_begin(&sleep_list), struct thread, elem);
+    if(t_->awake <= timer_ticks())
+    {
+      list_pop_front(&sleep_list);
+      thread_unblock(t_);
+    }
+    else break;
+  }
+
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

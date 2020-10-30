@@ -80,6 +80,8 @@ typedef int tid_t;
    only because they are mutually exclusive: only a thread in the
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
+
+struct list sleep_list; //for assignment 1 - make sleep list
 struct thread
   {
     /* Owned by thread.c. */
@@ -100,6 +102,7 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+    int64_t awake;  //for assignment 1 - awake time
   };
 
 /* If false (default), use round-robin scheduler.
